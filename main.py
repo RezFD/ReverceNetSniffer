@@ -1,7 +1,8 @@
+from dataclasses import dataclass
 from time import sleep
 from pathlib import Path
 from scapy.all import conf, Emph, ConditionalField, Packet, SetGen
-from scapy.layers.inet import UDP, TCP
+from scapy.layers.inet import UDP, TCP, IP
 from scapy.utils import rdpcap
 
 CURRENT_PATH = Path(__file__).parent
@@ -13,6 +14,14 @@ valid_layer = ["TCP", "UDP", "ICMP", "IP"]
 valid_param = [
     "chksum", "version", "len", "flags", "frag", "ttl", "src", "dst", "sport", "dport", "ack", "seq", "proto"
 ]
+
+
+@dataclass
+class ResultAttackChecker:
+    syn_counter: int
+    syn_ack_counter: int
+    complete_handshake_counter: int
+    last_sequence_number: list
 
 
 def show_or_dump_summary(pkt, dump=False, indent=3, lvl="", label_lvl="", first_call=True):
@@ -89,13 +98,42 @@ def scapy_summary(packet_list):
 
     sleep(3)
     for r in packet_list.res:
-        show_or_dump_summary(r, True)
+        show_or_dump_summary(r)
 
     print(f"Total fragmented packets -> {fragmented_pkt}")
+
+
+def check_attack(packet_list):
+    attack_ip_list: dict[tuple[str, str], ResultAttackChecker] = dict()
+    for packet in packet_list[TCP]:
+        if (flag := packet[TCP].flags) == 'S':
+            result = attack_ip_list.get(key := (packet[IP].src, packet[IP].dst), ResultAttackChecker(0, 0, 0, list()))
+            result.syn_counter += 1
+        elif flag == 'SA':
+            result = attack_ip_list.get(key := (packet[IP].dst, packet[IP].src), ResultAttackChecker(0, 0, 0, list()))
+            result.syn_ack_counter += 1
+            result.last_sequence_number.append(packet[TCP].seq)
+        elif flag == 'A':
+            result = attack_ip_list.get(key := (packet[IP].src, packet[IP].dst), ResultAttackChecker(0, 0, 0, list()))
+            if packet[TCP].seq in result.last_sequence_number:
+                result.last_sequence_number.remove(packet[TCP].seq)
+                result.complete_handshake_counter += 1
+        else:
+            continue
+        attack_ip_list[key] = result
+
+    print(attack_ip_list)
+    for key, value in attack_ip_list.items():
+        if value.syn_counter / (value.syn_ack_counter if value.syn_ack_counter else 1) > 3:
+            attack_type = 'Half Handshake'
+            if 0 < value.syn_ack_counter == value.complete_handshake_counter:
+                attack_type = 'Full Handshake'
+            print(f'attack ({attack_type}): {key}')
 
 
 if __name__ == '__main__':
     if RESULT_FILE.exists():
         RESULT_FILE.unlink()
     packets = rdpcap(str(CURRENT_PATH / 'target.pcap'))
-    scapy_summary(packets)
+    # scapy_summary(packets)
+    check_attack(packets)
