@@ -21,7 +21,7 @@ class ResultAttackChecker:
     syn_counter: int
     syn_ack_counter: int
     complete_handshake_counter: int
-    last_sequence_number: list
+    sequence_list: list
 
 
 def show_or_dump_summary(pkt, dump=False, indent=3, lvl="", label_lvl="", first_call=True):
@@ -112,11 +112,11 @@ def check_attack(packet_list):
         elif flag == 'SA':
             result = attack_ip_list.get(key := (packet[IP].dst, packet[IP].src), ResultAttackChecker(0, 0, 0, list()))
             result.syn_ack_counter += 1
-            result.last_sequence_number.append(packet[TCP].seq)
+            result.sequence_list.append(packet[TCP].seq)
         elif flag == 'A':
             result = attack_ip_list.get(key := (packet[IP].src, packet[IP].dst), ResultAttackChecker(0, 0, 0, list()))
-            if packet[TCP].seq in result.last_sequence_number:
-                result.last_sequence_number.remove(packet[TCP].seq)
+            if packet[TCP].seq in result.sequence_list:
+                result.sequence_list.remove(packet[TCP].seq)
                 result.complete_handshake_counter += 1
         else:
             continue
