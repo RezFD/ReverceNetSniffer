@@ -1,5 +1,5 @@
 /venv/
 /.idea/
 
-target.pcap
+*.pcap
 results.txt
