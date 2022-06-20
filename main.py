@@ -1,14 +1,13 @@
-
 from scapy.all import *
 from scapy.layers.inet import UDP, TCP
 from scapy.utils import rdpcap
 
-
 fragmented_pkt = 0
 
-
 valid_layer = ["TCP", "UDP", "ICMP", "IP"]
-valid_param = ["chksum", "version", "len", "flags", "frag", "ttl", "src", "dst", "sport", "dport", "ack", "seq", "proto"]
+valid_param = [
+    "chksum", "version", "len", "flags", "frag", "ttl", "src", "dst", "sport", "dport", "ack", "seq", "proto"
+]
 
 
 def show_or_dump_summary(pkt, dump=False,
@@ -91,7 +90,7 @@ def show_or_dump_summary(pkt, dump=False,
 
 
 def scapy_summary(packet_list):
-    global  fragmented_pkt
+    global fragmented_pkt
     print(f"Total packets -> {len(packet_list)}")
     print(f"Total TCP packets -> {len(packet_list[TCP])} : {round(100 * len(packet_list[TCP]) / len(packet_list))}%")
     print(f"Total UDP packets -> {len(packet_list[UDP])} : {round(100 * len(packet_list[UDP]) / len(packet_list))}%")
