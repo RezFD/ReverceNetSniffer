@@ -5,6 +5,7 @@ from scapy.layers.inet import UDP, TCP
 from scapy.utils import rdpcap
 
 CURRENT_PATH = Path(__file__).parent
+RESULT_FILE = CURRENT_PATH / 'results.txt'
 
 fragmented_pkt = 0
 
@@ -16,11 +17,7 @@ valid_param = [
 
 def show_or_dump_summary(pkt, dump=False, indent=3, lvl="", label_lvl="", first_call=True):
     global fragmented_pkt
-    if dump:
-        from scapy.themes import AnsiColorTheme
-        ct = AnsiColorTheme()
-    else:
-        ct = conf.color_theme
+    ct = conf.color_theme
     s = ""
 
     if pkt.name in valid_layer:
@@ -73,8 +70,12 @@ def show_or_dump_summary(pkt, dump=False, indent=3, lvl="", label_lvl="", first_
             first_call=False
         )
 
-    if first_call and not dump:
-        print(s)
+    if first_call:
+        if dump:
+            print(f'{s} \n', file=RESULT_FILE.open('a'))
+        else:
+            print(s)
+            print('\n', '─' * 80, '\n')
 
         return None
     else:
@@ -88,12 +89,13 @@ def scapy_summary(packet_list):
 
     sleep(3)
     for r in packet_list.res:
-        show_or_dump_summary(r)
-        print('\n', '─' * 80, '\n')
+        show_or_dump_summary(r, True)
 
     print(f"Total fragmented packets -> {fragmented_pkt}")
 
 
 if __name__ == '__main__':
+    if RESULT_FILE.exists():
+        RESULT_FILE.unlink()
     packets = rdpcap(str(CURRENT_PATH / 'target.pcap'))
     scapy_summary(packets)
